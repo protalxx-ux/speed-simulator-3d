@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Speed Simulator 3D</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#07111e;color:#eef7ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+canvas{display:block}#game{position:fixed;inset:0}#hud{position:fixed;inset:0;pointer-events:none}
+.top{display:flex;justify-content:space-between;align-items:flex-start;padding:13px;gap:8px}
+.brand{background:#091426bb;border:1px solid #29435e;border-radius:14px;padding:10px 13px;backdrop-filter:blur(8px)}
+.brand b{font-size:17px;letter-spacing:1px;color:#7df2ff}.brand small{display:block;color:#9bb6cf;font-size:11px}
+.stats{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.stat{background:#091426bb;border:1px solid #29435e;border-radius:12px;padding:9px 11px;font-size:12px;backdrop-filter:blur(8px)}.stat strong{color:#8ff7dc}
+.bottom{position:absolute;bottom:14px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.card{pointer-events:auto;background:#091426dd;border:1px solid #29435e;border-radius:17px;padding:12px;backdrop-filter:blur(10px);max-width:340px}
+.card h2{font-size:16px;margin:0 0 5px}.muted{color:#9db4ce;font-size:12px;line-height:1.4}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+button{border:1px solid #3a5c83;background:#142b47;color:#eaf7ff;border-radius:11px;padding:10px 13px;font-weight:800;cursor:pointer;pointer-events:auto}
+button.primary{background:linear-gradient(135deg,#20a8d4,#5365ed);border:0}button.green{background:linear-gradient(135deg,#10a887,#087b70);border:0}button:disabled{opacity:.35}
+#toast{position:absolute;top:90px;left:50%;transform:translateX(-50%);background:#091426e8;border:1px solid #37658b;padding:11px 16px;border-radius:14px;opacity:0;transition:opacity .25s;text-align:center;max-width:90%;font-weight:700}
+#raceHUD{position:absolute;top:24%;left:50%;transform:translateX(-50%);width:min(440px,85%);display:none;text-align:center;background:#07111eaa;border:1px solid #34516e;border-radius:16px;padding:12px}
+.trackbar{height:8px;background:#23364e;border-radius:99px;overflow:hidden;margin:8px 0}.trackbar div{height:100%;width:0;background:linear-gradient(90deg,#53f4c6,#69dfff)}
+#shop{display:none;position:absolute;inset:0;background:#06101bd9;pointer-events:auto;overflow:auto;padding:22px}
+.shopbox{max-width:750px;margin:5vh auto;background:#101e32;border:1px solid #29435e;border-radius:20px;padding:18px}
+.shopgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.item{background:#172943;border:1px solid #314c6c;border-radius:14px;padding:13px}.item h3{margin:0 0 6px;font-size:15px}.item p{font-size:12px;color:#a9bfd8;min-height:32px}.item button{width:100%}
+#start{position:absolute;inset:0;background:linear-gradient(180deg,#06101b99,#06101bee);display:flex;align-items:center;justify-content:center;padding:20px;pointer-events:auto}
+.startbox{text-align:center;max-width:500px}.startbox h1{font-size:clamp(32px,8vw,66px);line-height:.95;margin:0;color:#8af2ff;text-shadow:0 0 30px #1aaad8}.startbox p{color:#b0c5dc}.startbox button{font-size:17px;padding:15px 25px}
+#mobileControls{position:absolute;right:18px;bottom:115px;display:none;pointer-events:auto}
+#mobileControls button{width:70px;height:70px;border-radius:50%;font-size:24px;background:#143451dd}
+@media(max-width:600px){.brand b{font-size:14px}.stat{padding:7px 9px}.bottom{bottom:10px;left:10px;right:10px}.card{padding:10px;max-width:250px}.card h2{font-size:14px}button{padding:9px 10px;font-size:12px}#mobileControls{bottom:125px}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud">
+ <div class="top">
+  <div class="brand"><b>⚡ SPEED SIMULATOR 3D</b><small>TRAIN • RACE • UPGRADE</small></div>
+  <div class="stats"><div class="stat">💰 <strong id="coins">0</strong></div><div class="stat">⚡ <strong id="speed">1</strong></div><div class="stat">🏆 <strong id="wins">0</strong></div></div>
+ </div>
+ <div id="toast"></div>
+ <div id="raceHUD"><b id="raceTitle">RACE!</b><div class="trackbar"><div id="racebar"></div></div><small id="raceSub">Run!</small></div>
+ <div class="bottom">
+  <div class="card"><h2 id="modeTitle">🏋️ TRAINING GYM</h2><div class="muted" id="modeText">Stand on your treadmill and train to build speed.</div><div class="actions"><button class="primary" id="trainBtn">⚡ TRAIN</button><button id="raceBtn">🏁 RACE</button><button id="shopBtn">🛒 SHOP</button></div></div>
+  <div class="card" style="text-align:right"><h2 id="rival">Rookie Ray</h2><div class="muted" id="rivalInfo">Target speed: 5</div><div class="actions" style="justify-content:flex-end"><button id="nextBtn">Next Rival ›</button></div></div>
+ </div>
+ <div id="mobileControls"><button id="runTap">🏃</button></div>
+ <div id="shop"><div class="shopbox"><div style="display:flex;justify-content:space-between;align-items:center"><h2>🛒 TREADMILL STORE</h2><button id="closeShop">✕</button></div><p class="muted">Buy better machines to train faster. Your upgrades stay saved.</p><div class="shopgrid" id="shopItems"></div></div></div>
+ <div id="start"><div class="startbox"><h1>SPEED<br>SIMULATOR</h1><p>A 3D training & racing experience. Build speed, beat rivals, unlock the next machine.</p><button class="primary" id="playBtn">▶ PLAY NOW</button><p style="font-size:12px">Drag to look around • Train at your treadmill • Race NPCs</p></div></div>
+</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const $=id=>document.getElementById(id);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
+$('game').appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#081321');scene.fog=new THREE.Fog('#081321',22,95);
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,180);camera.position.set(0,5,11);
+scene.add(new THREE.HemisphereLight(0x9bcfff,0x172030,2));
+const sun=new THREE.DirectionalLight(0xffffff,3);sun.position.set(8,14,7);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+const mat=(c,rough=.65,metal=0)=>new THREE.MeshStandardMaterial({color:c,roughness:rough,metalness:metal});
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(160,160),mat('#101d2c'));floor.rotation.x=-Math.PI/2;floor.position.y=-.02;floor.receiveShadow=true;scene.add(floor);
+function box(parent,x,y,z,w,h,d,m){let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
+function cylinder(parent,x,y,z,r1,r2,h,m,seg=16){let o=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,seg),m);o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o}
+function line(x,z,x2,z2,color){let o=new THREE.Mesh(new THREE.BoxGeometry(Math.abs(x2-x)||.03,.04,Math.abs(z2-z)||.03),mat(color));o.position.set((x+x2)/2,.02,(z+z2)/2);scene.add(o)}
+// Gym architecture
+const wall=mat('#142b42'), dark=mat('#071321'), cyan=mat('#20c9ed',.25,.5), purple=mat('#6e62f5',.3,.3);
+box(scene,0,5,-16,42,10,1,wall);box(scene,-21,5,0,1,10,32,wall);box(scene,21,5,0,1,10,32,wall);
+for(let i=-18;i<=18;i+=6){box(scene,i,8,-15,.12,3,.12,cyan);box(scene,i,8,15,.12,3,.12,purple)}
+// windows, ceiling lights
+for(let x=-15;x<=15;x+=10){box(scene,x,6,-15,5,3,.12,mat('#1e4564',.2,.2));box(scene,x,9,0,5,.12,3,mat('#7bdfff',.3))}
+// floor lanes
+for(let x=-20;x<=20;x+=4)box(scene,x,.01,0,.035,.03,30,mat('#2c4962'));
+function createTreadmill(x,z,color){
+ let g=new THREE.Group();g.position.set(x,0,z);scene.add(g);
+ box(g,0,.65,0,2.5,.25,4.1,mat('#1b2636',.3,.5));box(g,0,.82,0,2.05,.07,3.5,mat('#050a10',.4,.3));
+ for(let s of [-1,1]){cylinder(g,s*1.02,.65,-1.65,.14,.14,.3,mat('#53667a'),12).rotation.x=Math.PI/2;cylinder(g,s*1.02,.65,1.65,.14,.14,.3,mat('#53667a'),12).rotation.x=Math.PI/2;box(g,s*1.13,1.25,-.8,.12,.9,.12,mat('#364d65'));box(g,s*1.13,1.7,-.8,.18,.12,.18,cyan)}
+ box(g,0,1.95,-.8,1.5,.4,.35,mat('#142b42'));box(g,0,2.17,-.8,1.1,.06,.2,cyan);
+ return g
+}
+const treadmill=createTreadmill(0,2,0x22d9ee);
+// Character procedural
+function makeRunner(color='#37d7ff'){
+ const g=new THREE.Group(), skin=mat('#c98f68'), shirt=mat(color,.45), pants=mat('#243a66'), shoes=mat('#f6f8ff',.3);
+ let torso=cylinder(g,0,1.45,0,.34,.27,.72,shirt,12);torso.rotation.z=-.08;
+ let head=new THREE.Mesh(new THREE.SphereGeometry(.24,16,12),skin);head.position.set(0,2.02,0);g.add(head);
+ let hair=new THREE.Mesh(new THREE.SphereGeometry(.25,12,8,0,Math.PI*2,0,Math.PI*.55),mat('#18202b'));hair.position.set(0,2.1,-.02);g.add(hair);
+ const limbs=[];
+ for(let side of [-1,1]){
+  let arm=new THREE.Group();arm.position.set(side*.36,1.72,0);g.add(arm);cylinder(arm,0,-.28,0,.105,.085,.55,skin,10);limbs.push({o:arm,type:'arm',side});
+  let leg=new THREE.Group();leg.position.set(side*.16,1.08,0);g.add(leg);cylinder(leg,0,-.32,0,.14,.1,.65,pants,10);box(leg,0,-.65,.13,.22,.13,.38,shoes);limbs.push({o:leg,type:'leg',side});
+ }
+ return {g,limbs};
+}
+const player=makeRunner();player.g.position.set(0,.15,2);scene.add(player.g);
+const npc=makeRunner('#ff6c92');npc.g.position.set(4,.15,-6);scene.add(npc.g);
+// rival pedestal and signs
+const sign=box(scene,4,3,-9,4,.9,.2,mat('#101f37')); 
+// World decorations pillars
+for(let z=-12;z<14;z+=6){for(let x of [-17,17]){box(scene,x,2,z,1,4,1,mat('#1b3551'));box(scene,x,4.2,z,1.2,.25,1.2,cyan)}}
+const racers=[{name:'Rookie Ray',req:5,reward:25},{name:'Jogger Jade',req:14,reward:65},{name:'Swift Sam',req:35,reward:160},{name:'Dash Nova',req:90,reward:420},{name:'Blaze Bolt',req:220,reward:1100},{name:'Velocity Vex',req:520,reward:2800},{name:'Cyber Comet',req:1300,reward:7200},{name:'Phantom Flash',req:3200,reward:18000},{name:'Overdrive',req:8000,reward:50000},{name:'THE SPEED KING',req:22000,reward:150000}];
+const machines=[{name:'Starter belt',power:1,cost:0},{name:'Sprint machine',power:2.5,cost:120},{name:'Turbo runner',power:6,cost:650},{name:'Neon velocity',power:14,cost:2600},{name:'Quantum track',power:32,cost:9500},{name:'Galaxy runner',power:75,cost:35000}];
+let save={coins:0,speed:1,wins:0,machine:0,boost:0,luck:0,rival:0};try{save={...save,...JSON.parse(localStorage.getItem('speed3d')||'{}')}}catch{}
+let training=false,racing=false,raceT=0,raceP=0,raceN=0,toastTimer;
+function persist(){localStorage.setItem('speed3d',JSON.stringify(save))}
+function fmt(n){return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':Math.floor(n).toLocaleString()}
+function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').style.opacity=0,2300)}
+function updateUI(){let r=racers[Math.min(save.rival,racers.length-1)];$('coins').textContent=fmt(save.coins);$('speed').textContent=fmt(save.speed);$('wins').textContent=save.wins;$('rival').textContent=r.name;$('rivalInfo').textContent=`Target speed: ${fmt(r.req)} • Reward ${fmt(r.reward)} coins`;$('nextBtn').textContent=save.rival===racers.length-1?'Final Rival':'Next Rival ›';}
+function showShop(){let root=$('shop');root.style.display='block';$('shopItems').innerHTML=machines.map((m,i)=>`<div class="item"><h3>${i===save.machine?'✓ ':''}${m.name}</h3><p>Training power ×${m.power}</p><b>🪙 ${fmt(m.cost)}</b><br><br><button ${i<=save.machine?'disabled':''} data-buy="${i}">${i===save.machine?'Equipped':i<save.machine?'Owned':'Buy'}</button></div>`).join('')+`<div class="item"><h3>Training boost</h3><p>+25% training permanently</p><b>🪙 ${fmt(Math.floor(100*Math.pow(1.8,save.boost)))}</b><br><br><button id="buyBoost">Upgrade</button></div><div class="item"><h3>Race luck (${save.luck}/5)</h3><p>Small performance bonus</p><b>🪙 ${fmt(500*Math.pow(2,save.luck))}</b><br><br><button id="buyLuck" ${save.luck>=5?'disabled':''}>Upgrade</button></div>`;
+root.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{let i=+b.dataset.buy,m=machines[i];if(save.coins<m.cost)return toast('Not enough coins!');save.coins-=m.cost;save.machine=i;persist();updateUI();showShop();toast('Machine purchased!')});
+$('buyBoost').onclick=()=>{let c=Math.floor(100*Math.pow(1.8,save.boost));if(save.coins<c)return toast('Not enough coins!');save.coins-=c;save.boost++;persist();updateUI();showShop();toast('Training boost upgraded!')};
+$('buyLuck').onclick=()=>{let c=500*Math.pow(2,save.luck);if(save.coins<c)return toast('Not enough coins!');save.coins-=c;save.luck++;persist();updateUI();showShop();toast('Race luck upgraded!')};
+}
+$('closeShop').onclick=()=> $('shop').style.display='none';$('shopBtn').onclick=showShop;
+$('playBtn').onclick=()=>{$('start').style.display='none';toast('Welcome! Hold TRAIN to build speed.')};
+$('trainBtn').onpointerdown=e=>{e.preventDefault();training=true;$('trainBtn').textContent='TRAINING…'};
+['pointerup','pointercancel','pointerleave'].forEach(ev=>$('trainBtn').addEventListener(ev,()=>{training=false;$('trainBtn').textContent='⚡ TRAIN'}));
+$('runTap').onpointerdown=()=>{save.speed+=machines[save.machine].power*(1+.25*save.boost)*.8;updateUI();persist();toast('+ speed')};
+$('raceBtn').onclick=()=>{if(racing)return;let r=racers[Math.min(save.rival,racers.length-1)];if(save.speed<r.req*.65)return toast('Train more before challenging '+r.name+'!');racing=true;raceT=0;raceP=0;raceN=0;$('raceHUD').style.display='block';$('raceTitle').textContent='🏁 '+r.name;$('raceSub').textContent='GO!';toast('3… 2… 1… RUN!')};
+$('nextBtn').onclick=()=>{let r=racers[Math.min(save.rival,racers.length-1)];toast('Current challenge: '+r.name+' • '+r.req+' speed'};
+let dragging=false,lastX=0,angle=0;renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX});window.addEventListener('pointerup',()=>dragging=false);window.addEventListener('pointermove',e=>{if(dragging){angle-=(e.clientX-lastX)*.005;lastX=e.clientX}});
+let clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
+ if(training){save.speed+=machines[save.machine].power*(1+.25*save.boost)*dt*1.2;persist();updateUI()}
+ player.limbs.forEach(l=>{let a=Math.sin(t*(training?12:2)+(l.side===1?Math.PI:0))*(training?.65:.08);l.o.rotation.x=a*(l.type==='leg'?1:-1);});
+ npc.limbs.forEach(l=>l.o.rotation.x=Math.sin(t*8+(l.side===1?Math.PI:0))*.5);
+ treadmill.children.forEach((o,i)=>{if(o.geometry?.type==='BoxGeometry'&&o.position.y===.82)o.material.color.setHSL(.52+Math.sin(t*2)*.03,.6,.12)});
+ if(racing){raceT+=dt;let r=racers[Math.min(save.rival,racers.length-1)],pwr=save.speed*(.88+Math.random()*.015+save.luck*.025),enemy=r.req*(.93+Math.sin(raceT*2)*.025);raceP=Math.min(1,raceP+dt*pwr/(pwr+enemy)*1.2);raceN=Math.min(1,raceN+dt*enemy/(pwr+enemy)*1.2);$('racebar').style.width=(raceP*100)+'%';$('raceSub').textContent=`YOU ${Math.floor(raceP*100)}%  •  NPC ${Math.floor(raceN*100)}%`;player.g.position.z=2-raceP*18;npc.g.position.z=-6-raceN*18;player.g.position.x=-1.5;npc.g.position.x=1.5;
+ if(raceP>=1||raceN>=1){racing=false;$('raceHUD').style.display='none';player.g.position.set(0,.15,2);npc.g.position.set(4,.15,-6);let won=pwr>enemy||raceP>=1&&raceN<1;if(won){save.coins+=r.reward;save.wins++;save.rival=Math.min(save.rival+1,racers.length-1);toast('🏆 WIN! +'+fmt(r.reward)+' coins')}else toast('NPC won! Train and try again.');persist();updateUI()}
+ }
+ let target=new THREE.Vector3(Math.sin(angle)*10,4,2+Math.cos(angle)*10);camera.position.lerp(target,.04);camera.lookAt(0,1.5,-2);renderer.render(scene,camera)
+}
+updateUI();animate();
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body></html>
